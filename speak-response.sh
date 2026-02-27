@@ -3,7 +3,7 @@
 # This script is called by Claude Code's Stop hook
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_FILE="$SCRIPT_DIR/config.json"
+CONFIG_FILE="$SCRIPT_DIR/claude-voice/config.json"
 PID_FILE="/tmp/claude-voice.pid"
 
 # Read stdin (JSON from Claude Code hook)
@@ -22,7 +22,7 @@ RATE="200"
 MAX_CHARS="3000"
 
 if [ -f "$CONFIG_FILE" ]; then
-    ENABLED=$(jq -r '.enabled // true' "$CONFIG_FILE" 2>/dev/null || echo "true")
+    ENABLED=$(jq -r 'if .enabled == null then true else .enabled end' "$CONFIG_FILE" 2>/dev/null || echo "true")
     VOICE=$(jq -r '.voice // "Samantha"' "$CONFIG_FILE" 2>/dev/null || echo "Samantha")
     RATE=$(jq -r '.rate // 200' "$CONFIG_FILE" 2>/dev/null || echo "200")
     MAX_CHARS=$(jq -r '.max_chars // 1000' "$CONFIG_FILE" 2>/dev/null || echo "1000")
