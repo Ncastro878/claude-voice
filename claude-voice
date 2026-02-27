@@ -1,0 +1,164 @@
+#!/bin/bash
+# claude-voice - CLI to control Claude Code text-to-speech
+# Usage: claude-voice [on|off|status|config|test|voices]
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_FILE="$SCRIPT_DIR/config.json"
+
+# Initialize config if it doesn't exist
+init_config() {
+    if [ ! -f "$CONFIG_FILE" ]; then
+        cat > "$CONFIG_FILE" << 'EOF'
+{
+  "enabled": true,
+  "voice": "Samantha",
+  "rate": 200,
+  "max_chars": 1000
+}
+EOF
+    fi
+}
+
+# Update a config value
+set_config() {
+    local key="$1"
+    local value="$2"
+    init_config
+    local tmp=$(mktemp)
+    jq ".$key = $value" "$CONFIG_FILE" > "$tmp" && mv "$tmp" "$CONFIG_FILE"
+}
+
+# Get a config value
+get_config() {
+    local key="$1"
+    local default="$2"
+    if [ -f "$CONFIG_FILE" ]; then
+        jq -r ".$key // $default" "$CONFIG_FILE"
+    else
+        echo "$default"
+    fi
+}
+
+# Show current status
+show_status() {
+    init_config
+    echo "claude-voice status:"
+    echo "  enabled:   $(get_config 'enabled' 'true')"
+    echo "  voice:     $(get_config 'voice' '"Samantha"')"
+    echo "  rate:      $(get_config 'rate' '200') words/min"
+    echo "  max_chars: $(get_config 'max_chars' '1000')"
+}
+
+# List available voices
+list_voices() {
+    echo "Available voices:"
+    say -v '?' | grep "en_" | awk '{print "  " $1}'
+    echo ""
+    echo "Set voice with: claude-voice config voice <name>"
+}
+
+# Test the current configuration
+test_speech() {
+    init_config
+    local voice=$(get_config 'voice' '"Samantha"')
+    local rate=$(get_config 'rate' '200')
+    echo "Testing voice: $voice at $rate words/min"
+    say -v "$voice" -r "$rate" "Claude voice is working. This is how responses will sound."
+}
+
+# Show usage
+usage() {
+    cat << 'EOF'
+claude-voice - Control Claude Code text-to-speech
+
+Usage: claude-voice <command> [args]
+
+Commands:
+  on              Enable speech
+  off             Disable speech
+  status          Show current settings
+  test            Test current voice settings
+  voices          List available voices
+  config          Configure settings:
+    voice <name>    Set voice (e.g., Samantha, Alex, Daniel)
+    rate <num>      Set speech rate in words/min (default: 200)
+    max <num>       Set max characters to speak (default: 1000)
+
+Examples:
+  claude-voice on
+  claude-voice config voice Daniel
+  claude-voice config rate 250
+  claude-voice test
+EOF
+}
+
+# Main
+case "${1:-}" in
+    on)
+        set_config "enabled" "true"
+        echo "claude-voice enabled"
+        ;;
+    off)
+        set_config "enabled" "false"
+        # Kill any running say process
+        if [ -f "/tmp/claude-voice.pid" ]; then
+            pid=$(cat /tmp/claude-voice.pid 2>/dev/null || true)
+            [ -n "$pid" ] && kill "$pid" 2>/dev/null || true
+            rm -f /tmp/claude-voice.pid
+        fi
+        echo "claude-voice disabled"
+        ;;
+    status)
+        show_status
+        ;;
+    test)
+        test_speech
+        ;;
+    voices)
+        list_voices
+        ;;
+    config)
+        case "${2:-}" in
+            voice)
+                if [ -z "${3:-}" ]; then
+                    echo "Current voice: $(get_config 'voice' '"Samantha"')"
+                    echo "Usage: claude-voice config voice <name>"
+                else
+                    set_config "voice" "\"$3\""
+                    echo "Voice set to: $3"
+                fi
+                ;;
+            rate)
+                if [ -z "${3:-}" ]; then
+                    echo "Current rate: $(get_config 'rate' '200')"
+                    echo "Usage: claude-voice config rate <number>"
+                else
+                    set_config "rate" "$3"
+                    echo "Rate set to: $3 words/min"
+                fi
+                ;;
+            max)
+                if [ -z "${3:-}" ]; then
+                    echo "Current max_chars: $(get_config 'max_chars' '1000')"
+                    echo "Usage: claude-voice config max <number>"
+                else
+                    set_config "max_chars" "$3"
+                    echo "Max characters set to: $3"
+                fi
+                ;;
+            *)
+                echo "Config options: voice, rate, max"
+                echo "Usage: claude-voice config <option> [value]"
+                ;;
+        esac
+        ;;
+    -h|--help|help)
+        usage
+        ;;
+    *)
+        usage
+        exit 1
+        ;;
+esac

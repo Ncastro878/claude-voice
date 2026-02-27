@@ -1,0 +1,5 @@
+# User config (template provided as config.json.example)
+config.json
+
+# Local Claude settings
+.claude/

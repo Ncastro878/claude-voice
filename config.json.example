@@ -1,0 +1,6 @@
+{
+  "enabled": true,
+  "voice": "Samantha",
+  "rate": 200,
+  "max_chars": 3000
+}
