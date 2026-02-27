@@ -4,7 +4,7 @@
   <img src="banner.png" alt="claude-voice" width="400">
 </p>
 
-Text-to-speech for Claude Code. Hear Claude's responses spoken aloud as you work.
+A `/voice` slash command for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) that adds text-to-speech to Claude's responses. Hear Claude speak aloud as you work.
 
 ## Requirements
 
