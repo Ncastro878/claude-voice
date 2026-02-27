@@ -1,5 +1,9 @@
 # User config (template provided as config.json.example)
 config.json
+claude-voice/config.json
+
+# Installed copies (source is at root)
+claude-voice/speak-response.sh
 
 # Local Claude settings
 .claude/

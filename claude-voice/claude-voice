@@ -39,7 +39,7 @@ get_config() {
     local key="$1"
     local default="$2"
     if [ -f "$CONFIG_FILE" ]; then
-        jq -r ".$key // $default" "$CONFIG_FILE"
+        jq -r "if .$key == null then $default else .$key end" "$CONFIG_FILE"
     else
         echo "$default"
     fi
@@ -191,9 +191,6 @@ case "${1:-}" in
         list_voices
         ;;
     uninstall)
-        echo "This will remove claude-voice from this project."
-        echo "Press Enter to continue or Ctrl+C to cancel..."
-        read -r
         do_uninstall
         ;;
     config)
@@ -211,6 +208,9 @@ case "${1:-}" in
                 if [ -z "${3:-}" ]; then
                     echo "Current rate: $(get_config 'rate' '200')"
                     echo "Usage: claude-voice config rate <number>"
+                elif ! [[ "$3" =~ ^[0-9]+$ ]]; then
+                    echo "Error: rate must be a positive integer"
+                    exit 1
                 else
                     set_config "rate" "$3"
                     echo "Rate set to: $3 words/min"
@@ -220,6 +220,9 @@ case "${1:-}" in
                 if [ -z "${3:-}" ]; then
                     echo "Current max_chars: $(get_config 'max_chars' '3000')"
                     echo "Usage: claude-voice config max <number>"
+                elif ! [[ "$3" =~ ^[0-9]+$ ]]; then
+                    echo "Error: max must be a positive integer"
+                    exit 1
                 else
                     set_config "max_chars" "$3"
                     echo "Max characters set to: $3"

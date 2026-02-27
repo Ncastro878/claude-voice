@@ -42,14 +42,14 @@ fi
 if [ -n "$LOCAL_DIR" ] && [ -f "$LOCAL_DIR/speak-response.sh" ]; then
     echo "Installing from local files..."
     cp "$LOCAL_DIR/speak-response.sh" "$INSTALL_DIR/"
-    cp "$LOCAL_DIR/claude-voice" "$INSTALL_DIR/"
+    cp "$LOCAL_DIR/claude-voice/claude-voice" "$INSTALL_DIR/"
     if [ -f "$LOCAL_DIR/config.json.example" ]; then
         cp "$LOCAL_DIR/config.json.example" "$INSTALL_DIR/"
     fi
 else
     echo "Downloading files from GitHub..."
     curl -fsSL "$REPO_URL/speak-response.sh" -o "$INSTALL_DIR/speak-response.sh"
-    curl -fsSL "$REPO_URL/claude-voice" -o "$INSTALL_DIR/claude-voice"
+    curl -fsSL "$REPO_URL/claude-voice/claude-voice" -o "$INSTALL_DIR/claude-voice"
 fi
 
 # Make scripts executable
