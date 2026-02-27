@@ -19,7 +19,7 @@ fi
 ENABLED="true"
 VOICE="Samantha"
 RATE="200"
-MAX_CHARS="1000"
+MAX_CHARS="3000"
 
 if [ -f "$CONFIG_FILE" ]; then
     ENABLED=$(jq -r '.enabled // true' "$CONFIG_FILE" 2>/dev/null || echo "true")

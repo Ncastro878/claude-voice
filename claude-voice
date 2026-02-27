@@ -1,11 +1,15 @@
 #!/bin/bash
 # claude-voice - CLI to control Claude Code text-to-speech
-# Usage: claude-voice [on|off|status|config|test|voices]
+# Usage: claude-voice [on|off|status|config|test|voices|uninstall]
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_FILE="$SCRIPT_DIR/config.json"
+
+# Project directory is parent of script directory (claude-voice/)
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+SETTINGS_FILE="$PROJECT_DIR/.claude/settings.json"
 
 # Initialize config if it doesn't exist
 init_config() {
@@ -15,7 +19,7 @@ init_config() {
   "enabled": true,
   "voice": "Samantha",
   "rate": 200,
-  "max_chars": 1000
+  "max_chars": 3000
 }
 EOF
     fi
@@ -48,7 +52,8 @@ show_status() {
     echo "  enabled:   $(get_config 'enabled' 'true')"
     echo "  voice:     $(get_config 'voice' '"Samantha"')"
     echo "  rate:      $(get_config 'rate' '200') words/min"
-    echo "  max_chars: $(get_config 'max_chars' '1000')"
+    echo "  max_chars: $(get_config 'max_chars' '3000')"
+    echo "  location:  $SCRIPT_DIR"
 }
 
 # List available voices
@@ -68,29 +73,95 @@ test_speech() {
     say -v "$voice" -r "$rate" "Claude voice is working. This is how responses will sound."
 }
 
+# Uninstall from this project
+do_uninstall() {
+    echo "Uninstalling claude-voice from this project..."
+
+    # Kill any running say process
+    if [ -f "/tmp/claude-voice.pid" ]; then
+        pid=$(cat /tmp/claude-voice.pid 2>/dev/null || true)
+        [ -n "$pid" ] && kill "$pid" 2>/dev/null || true
+        rm -f /tmp/claude-voice.pid
+    fi
+
+    # Remove the /voice skill
+    SKILL_DIR="$PROJECT_DIR/.claude/skills/voice"
+    if [ -d "$SKILL_DIR" ]; then
+        rm -rf "$SKILL_DIR"
+        echo "Removed /voice skill"
+
+        # Remove empty skills directory
+        if [ -d "$PROJECT_DIR/.claude/skills" ] && [ -z "$(ls -A "$PROJECT_DIR/.claude/skills" 2>/dev/null)" ]; then
+            rmdir "$PROJECT_DIR/.claude/skills"
+        fi
+    fi
+
+    # Remove hook from settings.json
+    if [ -f "$SETTINGS_FILE" ]; then
+        tmp=$(mktemp)
+        jq '
+            if .hooks.Stop then
+                .hooks.Stop = [.hooks.Stop[] | select(
+                    (.hooks // []) | all(.command | (contains("speak-response.sh") or contains("claude-voice")) | not)
+                )]
+            else
+                .
+            end |
+            if .hooks.Stop == [] then del(.hooks.Stop) else . end |
+            if .hooks == {} then del(.hooks) else . end
+        ' "$SETTINGS_FILE" > "$tmp" && mv "$tmp" "$SETTINGS_FILE"
+
+        # Remove empty settings file
+        if [ "$(cat "$SETTINGS_FILE")" = "{}" ]; then
+            rm "$SETTINGS_FILE"
+            echo "Removed .claude/settings.json"
+        else
+            echo "Removed hook from .claude/settings.json"
+        fi
+    fi
+
+    # Remove empty .claude directory only if completely empty
+    if [ -d "$PROJECT_DIR/.claude" ] && [ -z "$(ls -A "$PROJECT_DIR/.claude" 2>/dev/null)" ]; then
+        rmdir "$PROJECT_DIR/.claude"
+        echo "Removed empty .claude directory"
+    fi
+
+    # Remove the claude-voice directory
+    echo "Removing $SCRIPT_DIR..."
+    rm -rf "$SCRIPT_DIR"
+
+    echo ""
+    echo "Uninstall complete!"
+    echo "Restart Claude Code for changes to take effect."
+}
+
 # Show usage
 usage() {
     cat << 'EOF'
-claude-voice - Control Claude Code text-to-speech
+claude-voice - Text-to-speech for Claude Code responses (macOS)
 
-Usage: claude-voice <command> [args]
+Usage: /voice <command> [args]
+   or: ./claude-voice/claude-voice <command> [args]
 
 Commands:
   on              Enable speech
-  off             Disable speech
+  off             Disable speech (stops current speech)
   status          Show current settings
   test            Test current voice settings
-  voices          List available voices
-  config          Configure settings:
-    voice <name>    Set voice (e.g., Samantha, Alex, Daniel)
-    rate <num>      Set speech rate in words/min (default: 200)
-    max <num>       Set max characters to speak (default: 1000)
+  voices          List available macOS voices
+  uninstall       Remove claude-voice from this project
+
+Configuration:
+  config voice <name>    Set voice (e.g., Samantha, Alex, Daniel)
+  config rate <num>      Set speech rate in words/min (default: 200)
+  config max <num>       Set max characters to speak (default: 3000)
 
 Examples:
-  claude-voice on
-  claude-voice config voice Daniel
-  claude-voice config rate 250
-  claude-voice test
+  /voice on
+  /voice off
+  /voice config voice Daniel
+  /voice test
+  /voice uninstall
 EOF
 }
 
@@ -119,6 +190,12 @@ case "${1:-}" in
     voices)
         list_voices
         ;;
+    uninstall)
+        echo "This will remove claude-voice from this project."
+        echo "Press Enter to continue or Ctrl+C to cancel..."
+        read -r
+        do_uninstall
+        ;;
     config)
         case "${2:-}" in
             voice)
@@ -141,7 +218,7 @@ case "${1:-}" in
                 ;;
             max)
                 if [ -z "${3:-}" ]; then
-                    echo "Current max_chars: $(get_config 'max_chars' '1000')"
+                    echo "Current max_chars: $(get_config 'max_chars' '3000')"
                     echo "Usage: claude-voice config max <number>"
                 else
                     set_config "max_chars" "$3"
