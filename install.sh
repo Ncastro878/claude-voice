@@ -11,7 +11,7 @@ SETTINGS_DIR="$PROJECT_DIR/.claude"
 SETTINGS_FILE="$SETTINGS_DIR/settings.json"
 
 # GitHub raw URL for downloading files
-REPO_URL="https://raw.githubusercontent.com/ncastro/claude-voice/main"
+REPO_URL="https://raw.githubusercontent.com/Ncastro878/claude-voice/main"
 
 echo "Installing claude-voice into $INSTALL_DIR..."
 
