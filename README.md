@@ -1,5 +1,9 @@
 # claude-voice
 
+<p align="center">
+  <img src="banner.png" alt="claude-voice" width="400">
+</p>
+
 Text-to-speech for Claude Code. Hear Claude's responses spoken aloud as you work.
 
 ## Requirements
